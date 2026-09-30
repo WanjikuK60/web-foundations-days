@@ -26,11 +26,10 @@ function longestNote() {
 }
 
 function countByCategory() {
-  const counts = {};
-  for (const note of notes) {
+  return notes.reduce((counts, note) => {
     counts[note.category] = (counts[note.category] || 0) + 1;
-  }
-  return counts;
+    return counts;
+  }, {});
 }
 
 function getSummary() {
