@@ -172,6 +172,11 @@ button:focus-visible {
   transform: translateY(-2px);
 }
 
+button:active {
+  background: #0b4037;
+  transform: scale(0.98);
+}
+
 footer {
   padding: 16px;
   color: #52645a;
