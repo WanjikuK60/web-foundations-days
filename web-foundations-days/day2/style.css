@@ -56,6 +56,12 @@ nav a:focus-visible {
   background: #d9f1df;
 }
 
+nav a[aria-current="page"] {
+  color: #26342f;
+  background: #d9f1df;
+  font-weight: 700;
+}
+
 nav a:active {
   background: #0b4037;
   transform: scale(0.98);
