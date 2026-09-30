@@ -46,13 +46,19 @@ nav a {
   text-decoration: none;
   transition:
     background-color 180ms ease,
-    color 180ms ease;
+    color 180ms ease,
+    transform 180ms ease;
 }
 
 nav a:hover,
 nav a:focus-visible {
   color: #26342f;
   background: #d9f1df;
+}
+
+nav a:active {
+  background: #0b4037;
+  transform: scale(0.98);
 }
 
 main {
