@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f6f2" />
+    <title>Day 4 | Note Taker</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="note-app">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">WEB FOUNDATIONS · DAY 4</p>
+          <h1>Quick notes</h1>
+        </div>
+        <button id="theme-toggle" class="theme-button" type="button">
+          Dark mode
+        </button>
+      </header>
+
+      <section class="editor" aria-labelledby="note-label">
+        <label id="note-label" for="note-text">Your note</label>
+        <textarea
+          id="note-text"
+          name="note-text"
+          rows="10"
+          placeholder="Write something worth remembering..."
+          aria-describedby="char-count word-count"
+        ></textarea>
+
+        <div class="editor-footer">
+          <div class="counts" aria-live="polite" aria-atomic="true">
+            <p id="char-count">0 / 200 characters</p>
+            <p id="word-count">0 words</p>
+          </div>
+          <button id="clear-btn" class="clear-button" type="button">
+            Clear note
+          </button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
