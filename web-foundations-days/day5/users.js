@@ -7,15 +7,10 @@ let users = [];
 let hasLoadedUsers = false;
 let isLoading = false;
 
-function renderUsers() {
-  const query = filterInput.value.trim().toLowerCase();
-  const matchingUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(query),
-  );
-
+function renderUsers(usersToRender) {
   usersList.replaceChildren();
 
-  matchingUsers.forEach((user) => {
+  usersToRender.forEach((user) => {
     const item = document.createElement("li");
     const name = document.createElement("h2");
     const email = document.createElement("p");
@@ -30,13 +25,6 @@ function renderUsers() {
     item.append(name, email, city, company);
     usersList.append(item);
   });
-
-  if (hasLoadedUsers && !isLoading) {
-    status.textContent =
-      query === ""
-        ? `Loaded ${users.length} users.`
-        : `Showing ${matchingUsers.length} of ${users.length} users.`;
-  }
 }
 
 async function loadUsers() {
@@ -60,7 +48,8 @@ async function loadUsers() {
     users = data;
     hasLoadedUsers = true;
     isLoading = false;
-    renderUsers();
+    renderUsers(users);
+    status.textContent = `Loaded ${users.length} users.`;
   } catch (error) {
     hasLoadedUsers = false;
     status.textContent = `Unable to load users: ${error.message}`;
@@ -71,4 +60,20 @@ async function loadUsers() {
 }
 
 loadButton.addEventListener("click", loadUsers);
-filterInput.addEventListener("input", renderUsers);
+filterInput.addEventListener("input", () => {
+  const query = filterInput.value.trim().toLowerCase();
+  const matchingUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(query),
+  );
+
+  renderUsers(matchingUsers);
+
+  if (hasLoadedUsers && !isLoading) {
+    status.textContent =
+      matchingUsers.length === 0
+        ? "No users match your search."
+        : query === ""
+          ? `Loaded ${users.length} users.`
+          : `Showing ${matchingUsers.length} of ${users.length} users.`;
+  }
+});
