@@ -71,7 +71,7 @@ filterInput.addEventListener("input", () => {
   if (hasLoadedUsers && !isLoading) {
     status.textContent =
       matchingUsers.length === 0
-        ? "No users match your search."
+        ? "No users match your filter."
         : query === ""
           ? `Loaded ${users.length} users.`
           : `Showing ${matchingUsers.length} of ${users.length} users.`;
