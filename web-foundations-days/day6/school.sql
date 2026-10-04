@@ -14,7 +14,7 @@ CREATE TABLE courses (
 CREATE TABLE enrolments (
     student_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
-    grade INTEGER NOT NULL,
+    grade INTEGER,
     PRIMARY KEY (student_id, course_id),
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (course_id) REFERENCES courses(course_id)
@@ -37,6 +37,7 @@ INSERT INTO enrolments (student_id, course_id, grade) VALUES
     (1, 102, 88),
     (1, 103, 95),
     (2, 101, 85),
+    (2, 102, NULL),
     (2, 103, 90);
 
 -- 1. All courses for Maya Chen.
@@ -74,3 +75,10 @@ UPDATE enrolments
 SET grade = 94
 WHERE student_id = 2
   AND course_id = 103;
+
+-- 6. Average numeric grade per course; AVG ignores NULL grades.
+SELECT c.course_name, AVG(e.grade) AS average_grade
+FROM courses AS c
+LEFT JOIN enrolments AS e ON e.course_id = c.course_id
+GROUP BY c.course_id, c.course_name
+ORDER BY c.course_id;

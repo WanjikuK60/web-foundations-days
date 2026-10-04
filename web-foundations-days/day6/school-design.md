@@ -8,9 +8,9 @@
 - `courses` stores each course's ID and required name. The ID is the primary
   key.
 - `enrolments` records which student takes which course and that student's
-  grade. Its composite primary key (`student_id`, `course_id`) prevents a
-  student from enrolling in the same course twice. Both IDs are required
-  foreign keys to their parent tables.
+  grade, which may be `NULL` while it is pending. Its composite primary key
+  (`student_id`, `course_id`) prevents a student from enrolling in the same
+  course twice. Both IDs are required foreign keys to their parent tables.
 
 ## Relationships
 
