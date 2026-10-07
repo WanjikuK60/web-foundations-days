@@ -9,15 +9,17 @@ lock, and uniqueness constraint each provide a guarantee. That helped me
 separate a fast but possibly stale display from the authoritative purchase
 decision.
 
-I have not received formal feedback on this capstone yet, so I cannot claim
-that a particular reviewer asked for a change. On reviewing my own design, I
-would improve the sale-admission section by testing its fairness policy and
-setting a measured admission rate against realistic database and payment
-provider limits. The estimates show the scale of the burst, but a load test
-would make those limits more than assumptions.
+The feedback highlighted the need to define the order state machine for a
+payment callback that arrives after a hold expires. I would improve that part
+by making intermediate states explicit and specifying what happens at each
+deadline. The revised design keeps seats held only during a bounded review
+window; if a late callback confirms a capture after the order has expired, it
+queues an idempotent refund and never issues a ticket or reclaims a seat that
+may belong to another buyer. This makes the recovery behavior as concrete as
+the normal checkout path.
 
 Next, I want to learn more about database isolation levels and distributed
-queues. In particular, I would like to understand how to test failure cases
-such as a payment authorization arriving after a hold expires, and how to
-reconcile the payment provider's state with the order database without
-issuing a duplicate ticket or charging someone without a seat.
+queues, then practice modeling these workflows as state machines and testing
+their race conditions. I especially want to learn how to reconcile a payment
+provider's state with the order database when callbacks are delayed, repeated,
+or delivered out of order.

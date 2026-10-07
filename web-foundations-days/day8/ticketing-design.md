@@ -113,9 +113,9 @@ are primary keys; timestamps are UTC. Prices are stored as integer minor units
 | `users` | `id` primary key, `email` unique and not null, `password_hash`, `created_at` |
 | `events` | `id` primary key, `organizer_id` foreign key to `users.id`, `title`, `venue`, `starts_at`, `sale_starts_at`, `status` |
 | `seats` | `id` primary key, `event_id` foreign key to `events.id`, `section`, `row_label`, `seat_number`, `price_minor`, `currency`, `state` (`available`, `held`, `sold`), nullable `held_by_order_id` foreign key to `orders.id`, nullable `hold_expires_at`; unique (`event_id`, `section`, `row_label`, `seat_number`) |
-| `orders` | `id` primary key, `user_id` foreign key to `users.id`, `event_id` foreign key to `events.id`, `status` (`holding`, `payment_pending`, `paid`, `expired`, `cancelled`), `created_at`, `hold_expires_at`, nullable unique (`user_id`, `idempotency_key`) |
+| `orders` | `id` primary key, `user_id` foreign key to `users.id`, `event_id` foreign key to `events.id`, `status` (`holding`, `payment_pending`, `payment_pending_review`, `paid`, `expired`, `refund_pending`, `refunded`, `cancelled`), `created_at`, `hold_expires_at`, nullable `review_deadline_at`, nullable unique (`user_id`, `idempotency_key`) |
 | `order_items` | `id` primary key, `order_id` foreign key to `orders.id`, `seat_id` foreign key to `seats.id`, `price_minor`, `currency`; unique (`order_id`, `seat_id`) |
-| `payments` | `id` primary key, `order_id` foreign key to `orders.id`, `provider_reference` unique, `status`, `amount_minor`, `currency`, `created_at`; index on (`order_id`, `created_at`) |
+| `payments` | `id` primary key, `order_id` foreign key to `orders.id`, `provider_reference` unique, `status` (`processing`, `authorized`, `captured`, `void_pending`, `voided`, `refund_pending`, `refunded`, `failed`, `unknown`), `amount_minor`, `currency`, `created_at`; index on (`order_id`, `created_at`) |
 | `tickets` | `id` primary key, `order_item_id` foreign key to `order_items.id` and unique, `seat_id` foreign key to `seats.id` and unique, `ticket_code` unique, `issued_at` |
 
 Relationships:
@@ -152,20 +152,33 @@ Expired holds are released by a transaction that locks the seat row, confirms
 its hold has expired, and changes it back to `available`. The purchaser cannot
 extend a hold indefinitely; the service enforces the published expiry.
 
-Payment-provider calls happen outside database locks and transactions. After
-authorization, the confirmation transaction locks the seats again, checks
-that each is still held by this order and unexpired, changes them to `sold`,
-sets the order to `payment_pending`, and writes a capture command to the
-transactional outbox. The seats remain unavailable while capture is pending.
-A worker captures the authorized funds with an idempotency key; on confirmed
-success, a transaction marks the order `paid` and inserts its tickets. On a
-definitive capture failure, it voids the authorization and releases the seats
-in a transaction. If the provider's outcome is uncertain, keep the seats
-unavailable until reconciliation establishes whether capture succeeded. The
-`tickets.seat_id` unique constraint is the final database-level backstop
-against duplicate issuance. If the hold expired before confirmation, do not
-commit the capture command; void the authorization. Payment-webhook
-deduplication and idempotent worker retries make this flow safe to repeat.
+Payment-provider calls happen outside database locks and transactions. The
+order lifecycle is:
+
+| Current state | Event/guard | Next state and action |
+| --- | --- | --- |
+| `holding` | Hold created | Seats are `held` by this order until `hold_expires_at`. |
+| `holding` | Payment attempt begins before hold expiry | Set `payment_pending`; persist the provider reference and an idempotent authorization/capture command in the outbox. |
+| `payment_pending` | Hold timer expires while provider outcome is unresolved | Lock the order and its seats, set `payment_pending_review` and a fixed `review_deadline_at`, and keep these seats held by this order during this bounded reconciliation window. |
+| `payment_pending` or `payment_pending_review` | Verified callback/reconciliation confirms capture before the applicable deadline and the seats are still held by this order | In one transaction, mark payment `captured`, order `paid`, seats `sold`, and insert one ticket per order item. |
+| `payment_pending` or `payment_pending_review` | Provider definitively reports failure/void before capture | Mark payment failed/voided and order `expired` (or `cancelled`); release only seats still held by this order. |
+| `payment_pending_review` | Review deadline passes without confirmed capture | Set order `expired`, release only seats still owned by this order, and enqueue idempotent provider reconciliation/void. The bounded review window is the inventory reservation limit; an unknown provider response is not treated as proof of no capture. A later confirmed capture follows the late-callback rule below. |
+| `expired` or `cancelled` | A late callback/reconciliation reports that funds were captured | Move order to `refund_pending`; issue no tickets and leave seat rows untouched because they may now belong to another order. Enqueue an idempotent refund. On provider confirmation, mark payment `refunded` and order `refunded`. |
+
+Callbacks are signature-verified and deduplicated by provider event ID. The
+callback handler locks the order and its seat rows, checks current state,
+provider status, and the deadline using database time, then commits the state
+transition and any follow-up command to the transactional outbox. The expiry
+worker uses the same locks and only releases seats whose `held_by_order_id`
+still matches that order. Thus, if expiry/release wins the race, a late
+successful payment can only cause a refund; it cannot sell a seat already
+released to another buyer. If the success transition wins within the review
+window, it sells the still-owned seats and creates tickets atomically. The
+policy deliberately favors bounded inventory availability over waiting
+indefinitely for an uncertain provider: a capture confirmed after release is
+refunded, not fulfilled. The `tickets.seat_id` unique constraint remains a
+final backstop against duplicate issuance. All provider commands use
+idempotency keys so retries do not double capture or refund.
 
 ## 6. Architecture and big-sale behavior
 
