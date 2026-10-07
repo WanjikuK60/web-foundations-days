@@ -115,6 +115,14 @@ CDN.
    metadata with its thumbnail key; the CDN can then cache and deliver the
    original and thumbnail on demand.
 
+## Photo deletion and cache cleanup
+
+When an authorized user deletes a photo, mark its metadata as deleted first so
+feeds stop returning it, then evict affected cached feed entries and invalidate
+the CDN URLs for both the original and thumbnail. Enqueue object deletion as a
+retryable background job; the worker removes both files from object storage, so
+temporary storage-cleanup delays do not make the photo reappear in feeds.
+
 ## Trade-offs
 
 - **Asynchronous thumbnails vs. immediate availability:** Queueing thumbnail
